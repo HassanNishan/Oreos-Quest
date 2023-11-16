@@ -2,40 +2,62 @@ extends KinematicBody2D
 
 export (int) var acceleration = 500
 export (int) var friction = 500
-export (int) var speed = 100
+export (int) var full_speed = 100
+export (int) var walk_speed = 100
 
 var input_vector : Vector2 = Vector2.ZERO
 var velocity : Vector2 = Vector2.ZERO
+var sprite_direction = "Down"
+var state = MOVE
+
+enum {
+	MOVE,
+}
+
+onready var animationPlayer = $AnimationPlayer
 
 func _physics_process(delta):
-	movement(delta)
-	animation_handler()
+	match state:
+		MOVE:
+			default(delta)
 
-func get_input():
-	input_vector = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	return input_vector.normalized()
-
-func movement(delta):
+func default(delta):
 	get_input()
+	movement()
+	sprite_direction_loop()
 	
 	if input_vector != Vector2.ZERO:
-		velocity = velocity.move_toward(input_vector * speed, acceleration * delta)
+		animation_switch("walk")
+		velocity = velocity.move_toward(input_vector * walk_speed, acceleration * delta)
 	else:
+		animation_switch("idle")
 		velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
-	
-	move()
 
-func move():
+func get_input():
+	var LEFT = Input.is_action_pressed("move_left")
+	var RIGHT = Input.is_action_pressed("move_right")
+	var UP = Input.is_action_pressed("move_up")
+	var DOWN = Input.is_action_pressed("move_down")
+	
+	input_vector.x = -int(LEFT) + int(RIGHT)
+	input_vector.y = -int(UP) + int(DOWN)
+
+func movement():
+	input_vector = input_vector.normalized()
 	velocity = move_and_slide(velocity)
 
-#This function is only for the test sprite
-func animation_handler():
-	var sprite_direction = get_input()
-	if sprite_direction == Vector2.DOWN:
-		$Sprite.frame = 0
-	elif sprite_direction == Vector2.LEFT:
-		$Sprite.frame = 1
-	elif sprite_direction == Vector2.UP:
-		$Sprite.frame = 2
-	elif sprite_direction == Vector2.RIGHT:
-		$Sprite.frame = 3
+func sprite_direction_loop():
+	match input_vector:
+		Vector2.LEFT:
+			sprite_direction = "Left"
+		Vector2.RIGHT:
+			sprite_direction = "Right"
+		Vector2.UP:
+			sprite_direction = "Up"
+		Vector2.DOWN:
+			sprite_direction = "Down"
+
+func animation_switch(Animation):
+	var new_animation = str(Animation, sprite_direction)
+	if animationPlayer.current_animation != new_animation:
+		animationPlayer.play(new_animation)
